@@ -1,0 +1,299 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 55%;
+    --primary-light: 217 91% 95%;
+
+    --secondary: 210 17% 93%;
+    --secondary-foreground: 215 25% 15%;
+
+    --muted: 210 17% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 173 80% 95%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 217 91% 60%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 76% 95%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 95%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 199 89% 95%;
+
+    --radius: 0.5rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 45%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(173 80% 40%) 0%, hsl(173 80% 30%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 26%) 100%);
+    --gradient-card: linear-gradient(to bottom, hsl(0 0% 100%) 0%, hsl(210 17% 99%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-primary: 0 10px 20px -5px hsl(217 91% 60% / 0.3);
+    --shadow-accent: 0 10px 20px -5px hsl(173 80% 40% / 0.3);
+
+    --sidebar-background: 215 28% 17%;
+    --sidebar-foreground: 210 17% 93%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 25%;
+    --sidebar-accent-foreground: 210 17% 93%;
+    --sidebar-border: 215 25% 22%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    --background: 215 28% 10%;
+    --foreground: 210 17% 93%;
+
+    --card: 215 25% 15%;
+    --card-foreground: 210 17% 93%;
+
+    --popover: 215 25% 15%;
+    --popover-foreground: 210 17% 93%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 65%;
+    --primary-light: 217 91% 20%;
+
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 210 17% 93%;
+
+    --muted: 215 25% 20%;
+    --muted-foreground: 215 16% 60%;
+
+    --accent: 173 80% 40%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 173 80% 20%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 22%;
+    --input: 215 25% 22%;
+    --ring: 217 91% 60%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-light: 142 76% 20%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --warning-light: 38 92% 20%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    --info-light: 199 89% 20%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(217 91% 45%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(173 80% 40%) 0%, hsl(173 80% 30%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 26%) 100%);
+    --gradient-card: linear-gradient(to bottom, hsl(215 25% 15%) 0%, hsl(215 25% 17%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+    --shadow-primary: 0 10px 20px -5px hsl(217 91% 60% / 0.4);
+    --shadow-accent: 0 10px 20px -5px hsl(173 80% 40% / 0.4);
+
+    --sidebar-background: 215 28% 13%;
+    --sidebar-foreground: 210 17% 93%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 25% 18%;
+    --sidebar-accent-foreground: 210 17% 93%;
+    --sidebar-border: 215 25% 20%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer utilities {
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  /* Shared responsive page shell */
+  .page-shell {
+    @apply min-h-full flex flex-col gap-6 p-6;
+    background: linear-gradient(to bottom right, hsl(var(--background)), hsl(var(--muted) / 0.3));
+  }
+  
+  /* Consistent responsive grid helper */
+  .card-grid {
+    @apply grid grid-cols-1 gap-6;
+  }
+  
+  /* Table overflow helper for mobile */
+  .table-responsive {
+    @apply w-full overflow-x-auto;
+  }
+
+  /* Utility to keep tables readable on small screens */
+  .table-scroll {
+    @apply w-full overflow-x-auto;
+  }
+  .table-scroll table {
+    min-width: 640px;
+  }
+  
+  /* Toolbar that stacks on mobile */
+  .toolbar-stack {
+    @apply flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between items-start;
+  }
+  
+  /* Headings that downscale on small screens */
+  .page-title {
+    @apply text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  }
+  
+  .subtle-text {
+    @apply text-muted-foreground;
+  }
+  
+  /* Mobile specific adjustments */
+  @media (max-width: 768px) {
+    .page-shell {
+      @apply p-4 gap-4;
+    }
+    .card-grid {
+      grid-template-columns: 1fr !important;
+      gap: 1rem !important;
+    }
+    .table-responsive {
+      @apply -mx-4 px-4;
+    }
+    .table-scroll table {
+      min-width: 640px;
+    }
+    .page-title {
+      @apply text-3xl;
+    }
+    .toolbar-stack {
+      @apply gap-3;
+    }
+    .stack-sm {
+      @apply flex-col items-start gap-2;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .page-shell {
+      @apply p-3 gap-3;
+    }
+    .page-title {
+      @apply text-2xl;
+    }
+    .table-responsive {
+      @apply -mx-3 px-3;
+    }
+    .table-scroll table {
+      min-width: 640px;
+    }
+  }
+  
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+  
+  .gradient-success {
+    background: var(--gradient-success);
+  }
+  
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+}
+
+/* Dashboard chart polish (PowerBI-like) */
+.chart-surface {
+  background: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.45), rgba(255,255,255,0)) ,
+              linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+  border-radius: 18px;
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border: 1px solid #e2e8f0;
+}
+
+.chart-legend text {
+  fill: #475569;
+  font-weight: 600;
+}
+
+.chart-axis text {
+  fill: #475569;
+  font-weight: 600;
+}
+
+.chart-axis line,
+.chart-axis path {
+  stroke: #cbd5e1;
+}
+
+.chart-grid line {
+  stroke: #e2e8f0;
+  stroke-dasharray: 3 3;
+  opacity: 0.6;
+}
+
+.chart-tooltip {
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  padding: 10px 12px;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
