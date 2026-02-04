@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useRef } from "react";
-import { uploadApi } from "@/lib/api";
+import { uploadApi, financialYearMasterApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -44,6 +44,15 @@ export default function Upload() {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [months, setMonths] = useState<Month[]>([]);
   const [financialYears, setFinancialYears] = useState<number[]>([]);
+  const [financialYearMaster, setFinancialYearMaster] = useState<Array<{
+    id: number;
+    financial_year: string;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+    description: string | null;
+  }>>([]);
+  const [currentFinancialYear, setCurrentFinancialYear] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -59,6 +68,8 @@ export default function Upload() {
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const [newCompany, setNewCompany] = useState<number | null>(null);
+  const [showInvalidFYDialog, setShowInvalidFYDialog] = useState(false);
+  const [invalidFYMessage, setInvalidFYMessage] = useState<{ title: string; description: string } | null>(null);
 
   const fiscalMonthOrder = [
     "April",
@@ -138,6 +149,8 @@ export default function Upload() {
     fetchEntities();
     fetchMonths();
     fetchFinancialYears();
+    fetchFinancialYearMaster();
+    fetchCurrentFinancialYear();
   }, []);
 
   const fetchEntities = async () => {
@@ -189,6 +202,50 @@ export default function Upload() {
         variant: "destructive",
       });
     }
+  };
+
+  const fetchFinancialYearMaster = async () => {
+    try {
+      // Fetch only active financial years from master data
+      const response = await financialYearMasterApi.list(true);
+      if (response.success && response.data) {
+        setFinancialYearMaster(response.data.financial_years);
+      }
+    } catch (error: any) {
+      console.error("Error fetching financial year master:", error);
+      // Don't show error toast - fallback to old method if master data not available
+    }
+  };
+
+  const fetchCurrentFinancialYear = async () => {
+    try {
+      const response = await financialYearMasterApi.getCurrent();
+      if (response.success && response.data) {
+        const currentFY = response.data.financial_year;
+        setCurrentFinancialYear(currentFY);
+        // Auto-select current financial year if available
+        const endingYear = getEndingYearFromFY(currentFY);
+        if (endingYear) {
+          setFormData(prev => ({ ...prev, financial_year: endingYear.toString() }));
+        }
+      } else {
+        console.warn("No current financial year found:", response.message);
+      }
+    } catch (error: any) {
+      console.error("Error fetching current financial year:", error);
+      // Don't show error toast - allow manual selection
+    }
+  };
+
+  // Helper function to extract ending year from financial year string (e.g., "2024-25" -> 2024)
+  const getEndingYearFromFY = (fyString: string): number | null => {
+    if (!fyString || !fyString.includes('-')) return null;
+    const parts = fyString.split('-');
+    if (parts.length === 2) {
+      const year = parseInt(parts[0], 10);
+      return isNaN(year) ? null : year;
+    }
+    return null;
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,6 +309,44 @@ export default function Upload() {
         variant: "destructive",
       });
       return;
+    }
+
+    // Validate that the selected financial year is the CURRENT financial year
+    if (currentFinancialYear) {
+      const selectedFY = formData.financial_year;
+      const selectedFYNum = parseInt(selectedFY, 10);
+      const currentFYEndingYear = getEndingYearFromFY(currentFinancialYear);
+      
+      // Check if selected FY matches current FY
+      if (currentFYEndingYear !== selectedFYNum) {
+        setInvalidFYMessage({
+          title: "Invalid Financial Year",
+          description: `You can only upload data for the current financial year (FY ${currentFinancialYear}). Selected FY ${selectedFYNum}-${String(selectedFYNum + 1).slice(-2)} is not the current financial year.`,
+        });
+        setShowInvalidFYDialog(true);
+        return;
+      }
+    } else {
+      // If current FY is not available, fall back to checking if FY exists in master data
+      if (financialYearMaster.length > 0) {
+        const selectedFY = formData.financial_year;
+        const selectedFYNum = parseInt(selectedFY, 10);
+        
+        // Check if selected FY exists in master data
+        const fyExists = financialYearMaster.some(fy => {
+          const endingYear = getEndingYearFromFY(fy.financial_year);
+          return endingYear === selectedFYNum && fy.is_active;
+        });
+
+        if (!fyExists) {
+          setInvalidFYMessage({
+            title: "Financial Year Not Configured",
+            description: `FY ${selectedFYNum}-${String(selectedFYNum + 1).slice(-2)} is not configured or not active in Master Data. Please configure it in Settings → Master Data first.`,
+          });
+          setShowInvalidFYDialog(true);
+          return;
+        }
+      }
     }
 
     // Show dialog to ask about starting month balance sheet
@@ -442,17 +537,59 @@ export default function Upload() {
             
             <div className="space-y-2">
               <Label>Financial Year</Label>
-              <Input
-                type="number"
-                placeholder="Enter year (e.g., 2024)"
-                value={formData.financial_year}
-                onChange={(e) => {
-                  setFormData({ ...formData, financial_year: e.target.value, month_name: "" });
-                }}
-                disabled={isLoading || isUploading}
-                min="2000"
-                max="2100"
-              />
+              {financialYearMaster.length > 0 ? (
+                <Select
+                  value={formData.financial_year}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, financial_year: value, month_name: "" });
+                  }}
+                  disabled={isLoading || isUploading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Financial Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {financialYearMaster
+                      .filter(fy => fy.is_active)
+                      .sort((a, b) => {
+                        // Sort by start_date descending (newest first)
+                        return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+                      })
+                      .map((fy) => {
+                        const endingYear = getEndingYearFromFY(fy.financial_year);
+                        const startDate = new Date(fy.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        const endDate = new Date(fy.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        const isCurrentFY = fy.financial_year === currentFinancialYear;
+                        return (
+                          <SelectItem 
+                            key={fy.id} 
+                            value={endingYear ? endingYear.toString() : fy.financial_year}
+                            className={isCurrentFY ? "font-semibold" : ""}
+                          >
+                            {isCurrentFY ? "✓ " : ""}FY {fy.financial_year} ({startDate} - {endDate}){isCurrentFY ? " (Current)" : ""}
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  type="number"
+                  placeholder="Enter year (e.g., 2024)"
+                  value={formData.financial_year}
+                  onChange={(e) => {
+                    setFormData({ ...formData, financial_year: e.target.value, month_name: "" });
+                  }}
+                  disabled={isLoading || isUploading}
+                  min="2000"
+                  max="2100"
+                />
+              )}
+              {financialYearMaster.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Configure financial years in Settings → Master Data to use dropdown
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Month</Label>
@@ -562,6 +699,26 @@ export default function Upload() {
             </AlertDialogCancel>
             <AlertDialogAction onClick={() => handleNewCompanyDialogResponse(true)}>
               Yes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Invalid Financial Year Dialog */}
+      <AlertDialog open={showInvalidFYDialog} onOpenChange={setShowInvalidFYDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              {invalidFYMessage?.title || "Invalid Financial Year"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-2">
+              {invalidFYMessage?.description || "You cannot upload data for this financial year."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowInvalidFYDialog(false)}>
+              I Understand
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

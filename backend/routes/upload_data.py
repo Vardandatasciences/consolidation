@@ -1028,6 +1028,67 @@ def upload_file():
                 'half': month_details_result.get('half')
             }
         
+        # Validate that the month/year falls within an active financial year range
+        from routes.financial_year_master import validate_date_against_fy_master, get_current_financial_year
+        
+        # Convert month_name and year to a date (first day of that month)
+        month_map = {
+            'january': 1, 'february': 2, 'march': 3, 'april': 4,
+            'may': 5, 'june': 6, 'july': 7, 'august': 8,
+            'september': 9, 'october': 10, 'november': 11, 'december': 12
+        }
+        month_name_lower = (month_details['month_name'] or '').lower().strip()
+        month_num = month_map.get(month_name_lower, 1)
+        upload_date = datetime(month_details['year'], month_num, 1).date()
+        
+        # Validate against master data
+        validation_result = validate_date_against_fy_master(upload_date)
+        if not validation_result['valid']:
+            # Check if this is a previous financial year (before any configured FY)
+            from routes.financial_year_master import check_if_previous_fy
+            
+            previous_fy_check = check_if_previous_fy(upload_date)
+            if previous_fy_check['is_previous']:
+                return jsonify({
+                    'success': False,
+                    'message': f"Cannot upload data for previous financial years. The selected date ({upload_date}) falls before any configured financial year. Please configure FY {previous_fy_check.get('suggested_fy', '')} in Master Data settings first.",
+                    'error': 'PREVIOUS_FINANCIAL_YEAR_NOT_CONFIGURED',
+                    'upload_date': str(upload_date),
+                    'month': month_details['month_name'],
+                    'year': month_details['year'],
+                    'suggested_fy': previous_fy_check.get('suggested_fy', '')
+                }), 400
+            else:
+                return jsonify({
+                    'success': False,
+                    'message': f"Data upload not allowed: {validation_result['message']}. Please configure the financial year in Master Data settings.",
+                    'error': 'FINANCIAL_YEAR_VALIDATION_FAILED',
+                    'upload_date': str(upload_date),
+                    'month': month_details['month_name'],
+                    'year': month_details['year']
+                }), 400
+        
+        print(f"✅ Financial year validation passed: {validation_result['financial_year']}")
+        
+        # Validate that the selected financial year is the CURRENT financial year
+        current_fy_result = get_current_financial_year()
+        if current_fy_result['found']:
+            selected_fy = validation_result.get('financial_year')
+            current_fy = current_fy_result.get('financial_year')
+            
+            if selected_fy != current_fy:
+                return jsonify({
+                    'success': False,
+                    'message': f"You can only upload data for the current financial year (FY {current_fy}). Selected FY {selected_fy} is not the current financial year.",
+                    'error': 'NOT_CURRENT_FINANCIAL_YEAR',
+                    'selected_fy': selected_fy,
+                    'current_fy': current_fy,
+                    'upload_date': str(upload_date)
+                }), 400
+            print(f"✅ Current financial year validation passed: {current_fy}")
+        else:
+            print(f"⚠️ Warning: No current financial year found. Skipping current FY validation.")
+        
         print(f"📄 Processing file: {file.filename}")
         print(f"🏢 Entity: {entity_details['ent_name']} ({entity_details['ent_code']})")
         print(f"📅 Month: {month_details['month_name']} {month_details['year']}")

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, DollarSign, Calendar, Building2, RefreshCcw, Loader2 } from "lucide-react";
+import { Plus, DollarSign, Calendar, Building2, RefreshCcw, Loader2, MoreVertical } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
@@ -10,6 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Entity = {
   ent_id: number;
@@ -42,7 +48,15 @@ export default function Forex() {
   const [rates, setRates] = useState<ForexRate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingRate, setEditingRate] = useState<ForexRate | null>(null);
   const [form, setForm] = useState({
+    currency: "",
+    opening_rate: "",
+    closing_rate: "",
+    financial_year: "",
+  });
+  const [editForm, setEditForm] = useState({
     currency: "",
     opening_rate: "",
     closing_rate: "",
@@ -169,28 +183,64 @@ export default function Forex() {
     }
   };
 
-  const handleUpdate = async (rate: ForexRate, field: "opening_rate" | "closing_rate", value: string) => {
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) {
+  const handleEdit = (rate: ForexRate) => {
+    setEditingRate(rate);
+    // Parse financial year - handle both string and number formats
+    let fyValue = "";
+    if (typeof rate.financial_year === 'string' && rate.financial_year.includes('-')) {
+      // Extract ending year from "2024-25" format
+      const parts = rate.financial_year.split('-');
+      fyValue = parts[0];
+    } else {
+      fyValue = rate.financial_year.toString();
+    }
+    
+    setEditForm({
+      currency: rate.currency,
+      opening_rate: rate.opening_rate.toString(),
+      closing_rate: rate.closing_rate.toString(),
+      financial_year: fyValue,
+    });
+    setEditOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingRate) return;
+
+    if (!editForm.currency || !editForm.opening_rate || !editForm.closing_rate || !editForm.financial_year) {
       toast({
-        title: "Invalid rate",
-        description: "Rate must be a valid number",
+        title: "Missing fields",
+        description: "All fields are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const openingRate = parseFloat(editForm.opening_rate);
+    const closingRate = parseFloat(editForm.closing_rate);
+    const financialYear = parseInt(editForm.financial_year, 10);
+
+    if (isNaN(openingRate) || isNaN(closingRate) || isNaN(financialYear)) {
+      toast({
+        title: "Invalid values",
+        description: "Opening rate, closing rate, and financial year must be valid numbers",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      const payload: any = { currency: rate.currency };
-      if (field === "opening_rate") {
-        payload.opening_rate = numValue;
-      } else {
-        payload.closing_rate = numValue;
-      }
+      const payload = {
+        currency: editForm.currency.toUpperCase(),
+        opening_rate: openingRate,
+        closing_rate: closingRate,
+      };
 
-      const res = await forexApi.updateEntityFYRates(rate.entity_id, rate.financial_year, payload);
+      const res = await forexApi.updateEntityFYRates(editingRate.entity_id, financialYear, payload);
       if (res.success) {
         toast({ title: "Forex rate updated successfully" });
+        setEditOpen(false);
+        setEditingRate(null);
         loadRates();
       }
     } catch (e: any) {
@@ -414,6 +464,7 @@ export default function Forex() {
                     <TableHead>FY Start Date</TableHead>
                     <TableHead>FY End Date</TableHead>
                     <TableHead>Last Updated</TableHead>
+                    <TableHead className="w-[50px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -426,7 +477,7 @@ export default function Forex() {
                         key={rate.id} 
                         rate={rate} 
                         avgRate={avgRate} 
-                        onUpdate={handleUpdate} 
+                        onEdit={handleEdit}
                         formatCurrency={formatCurrency} 
                         formatDate={formatDate}
                         formatFinancialYear={formatFinancialYear}
@@ -439,6 +490,75 @@ export default function Forex() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Forex Rate</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_financial_year">Financial Year (Ending Year) *</Label>
+              <Select
+                value={editForm.financial_year}
+                onValueChange={(value) => setEditForm({ ...editForm, financial_year: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Financial Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {financialYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      FY {year - 1}-{year.toString().slice(-2)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_currency">Currency *</Label>
+              <Input
+                id="edit_currency"
+                value={editForm.currency}
+                onChange={(e) => setEditForm({ ...editForm, currency: e.target.value.toUpperCase() })}
+                placeholder="USD"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_opening_rate">Opening Rate (FY Start) *</Label>
+              <Input
+                id="edit_opening_rate"
+                type="number"
+                step="0.000001"
+                value={editForm.opening_rate}
+                onChange={(e) => setEditForm({ ...editForm, opening_rate: e.target.value })}
+                placeholder="82.50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_closing_rate">Closing Rate (FY End) *</Label>
+              <Input
+                id="edit_closing_rate"
+                type="number"
+                step="0.000001"
+                value={editForm.closing_rate}
+                onChange={(e) => setEditForm({ ...editForm, closing_rate: e.target.value })}
+                placeholder="83.20"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setEditOpen(false);
+              setEditingRate(null);
+            }}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate}>Update</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -446,21 +566,18 @@ export default function Forex() {
 function RateRow({
   rate,
   avgRate,
-  onUpdate,
+  onEdit,
   formatCurrency,
   formatDate,
   formatFinancialYear,
 }: {
   rate: ForexRate;
   avgRate: number;
-  onUpdate: (rate: ForexRate, field: "opening_rate" | "closing_rate", value: string) => void;
+  onEdit: (rate: ForexRate) => void;
   formatCurrency: (value: number) => string;
   formatDate: (dateString: string) => string;
-  formatFinancialYear: (year: number) => string;
+  formatFinancialYear: (year: number | string) => string;
 }) {
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>("");
-
   return (
     <TableRow className="hover:bg-muted/50">
       <TableCell className="font-medium">
@@ -470,84 +587,10 @@ function RateRow({
         <Badge variant="outline">{rate.currency}</Badge>
       </TableCell>
       <TableCell>
-        {editingField === "opening_rate" ? (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              step="0.000001"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="w-24"
-              autoFocus
-              onBlur={() => {
-                if (editValue) {
-                  onUpdate(rate, "opening_rate", editValue);
-                }
-                setEditingField(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (editValue) {
-                    onUpdate(rate, "opening_rate", editValue);
-                  }
-                  setEditingField(null);
-                } else if (e.key === "Escape") {
-                  setEditingField(null);
-                }
-              }}
-            />
-          </div>
-        ) : (
-          <span
-            className="cursor-pointer hover:underline"
-            onClick={() => {
-              setEditingField("opening_rate");
-              setEditValue(rate.opening_rate.toString());
-            }}
-          >
             {formatCurrency(rate.opening_rate)}
-          </span>
-        )}
       </TableCell>
       <TableCell>
-        {editingField === "closing_rate" ? (
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              step="0.000001"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              className="w-24"
-              autoFocus
-              onBlur={() => {
-                if (editValue) {
-                  onUpdate(rate, "closing_rate", editValue);
-                }
-                setEditingField(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (editValue) {
-                    onUpdate(rate, "closing_rate", editValue);
-                  }
-                  setEditingField(null);
-                } else if (e.key === "Escape") {
-                  setEditingField(null);
-                }
-              }}
-            />
-          </div>
-        ) : (
-          <span
-            className="cursor-pointer hover:underline"
-            onClick={() => {
-              setEditingField("closing_rate");
-              setEditValue(rate.closing_rate.toString());
-            }}
-          >
             {formatCurrency(rate.closing_rate)}
-          </span>
-        )}
       </TableCell>
       <TableCell className="text-muted-foreground">{formatCurrency(avgRate)}</TableCell>
       <TableCell>
@@ -563,6 +606,21 @@ function RateRow({
         </div>
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">{formatDate(rate.updated_at)}</TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onEdit(rate)}>
+              Edit
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
     </TableRow>
   );
 }

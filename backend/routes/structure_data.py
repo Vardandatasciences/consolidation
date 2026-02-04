@@ -63,28 +63,10 @@ def _build_forex_cache(rows):
         cache_key = f"{entity_id}_{curr}_{fy}"
         fy_rates = get_entity_fy_forex_rate(entity_id, curr, fy)
         
-        # If not found for exact FY, try adjacent year (FY 2024-25 might be stored as 2025)
-        # Also try year-1 in case data has ending year but rates stored with starting year
+        # STRICT MATCHING: Only use rates from exact same FY (no adjacent year fallback)
         if not fy_rates:
-            # Try next year (e.g., if data has 2024, try 2025 for FY 2024-25)
-            try_next_fy = fy + 1
-            print(f"⚠️ No FY-specific rate found: Entity {entity_id}, Currency {curr}, FY {fy}, trying adjacent year {try_next_fy}")
-            fy_rates = get_entity_fy_forex_rate(entity_id, curr, try_next_fy)
-            if fy_rates:
-                print(f"✅ Found FY-specific rate in adjacent year: Entity {entity_id}, Currency {curr}, FY {try_next_fy} (data has {fy})")
-                # Use the found FY for cache key to ensure consistency
-                cache_key = f"{entity_id}_{curr}_{try_next_fy}"
-                fy = try_next_fy  # Update fy for monthly rate lookup
-        
-        # If still not found, try previous year (e.g., if data has 2025, try 2024 for FY 2023-2024)
-        if not fy_rates:
-            try_prev_fy = fy - 1
-            print(f"⚠️ No FY-specific rate found: Entity {entity_id}, Currency {curr}, FY {fy}, trying previous year {try_prev_fy}")
-            fy_rates = get_entity_fy_forex_rate(entity_id, curr, try_prev_fy)
-            if fy_rates:
-                print(f"✅ Found FY-specific rate in previous year: Entity {entity_id}, Currency {curr}, FY {try_prev_fy} (data has {fy})")
-                cache_key = f"{entity_id}_{curr}_{try_prev_fy}"
-                fy = try_prev_fy  # Update fy for monthly rate lookup
+            print(f"⚠️ WARNING: No FY-specific rate found: Entity {entity_id}, Currency {curr}, FY {fy}. Rates must be configured for the exact same financial year.")
+            # Don't add to cache - strict requirement: rates must be from same FY
         
         if fy_rates:
             found_entity_rates.add(curr.upper())
@@ -182,35 +164,31 @@ def _apply_forex_rates(rows, forex_cache):
             except Exception:
                 pass
         
-        # Try FY-specific cache first
+        # Try FY-specific cache - STRICT MATCHING ONLY (same FY as data)
         fx = None
         if entity_id and financial_year:
             cache_key = f"{entity_id}_{curr}_{financial_year}"
             fx = forex_cache.get(cache_key)
             
-            # If not found, try adjacent years
+            # If not found, log warning and skip (don't use fallback)
             if not fx:
-                try_next_fy = financial_year + 1
-                cache_key = f"{entity_id}_{curr}_{try_next_fy}"
-                fx = forex_cache.get(cache_key)
-                if fx:
-                    print(f"✅ Using FY rate from adjacent year: Entity {entity_id}, Currency {curr}, FY {try_next_fy} (data has {financial_year})")
-            
-            if not fx:
-                try_prev_fy = financial_year - 1
-                cache_key = f"{entity_id}_{curr}_{try_prev_fy}"
-                fx = forex_cache.get(cache_key)
-                if fx:
-                    print(f"✅ Using FY rate from previous year: Entity {entity_id}, Currency {curr}, FY {try_prev_fy} (data has {financial_year})")
+                print(f"⚠️ WARNING: No forex rates found for Entity {entity_id}, Currency {curr}, FY {financial_year}. Skipping calculation for this row.")
+                # Set a flag in the row to indicate missing rates
+                row["_forex_rate_missing"] = True
+                row["_forex_rate_missing_reason"] = f"No rates configured for Entity {entity_id}, Currency {curr}, FY {financial_year}"
+                continue  # Skip this row - strict requirement: rates must be from same FY
         
-        # Fallback to legacy cache
-        if not fx:
+        # Fallback to legacy cache only if no entity_id or financial_year (backward compatibility)
+        if not fx and (not entity_id or not financial_year):
             fx = forex_cache.get(f"legacy_{curr}")
             # Also try direct currency key for backward compatibility
             if not fx:
                 fx = forex_cache.get(curr)
         
         if not fx:
+            # No rates available at all
+            row["_forex_rate_missing"] = True
+            row["_forex_rate_missing_reason"] = f"No forex rates available for Currency {curr}"
             continue
         
         # Determine calculation method using either category1 or mainCategory labels
@@ -320,31 +298,27 @@ def _calculate_and_save_forex_rates(rows, forex_cache, save_to_db=True):
             except Exception:
                 pass
         
-        # Try FY-specific cache first
+        # Try FY-specific cache - STRICT MATCHING ONLY (same FY as data)
         fx = None
         if entity_id and financial_year:
             cache_key = f"{entity_id}_{curr}_{financial_year}"
             fx = forex_cache.get(cache_key)
             
-            # If not found, try adjacent years
+            # If not found, log warning and skip (don't use fallback)
             if not fx:
-                try_next_fy = financial_year + 1
-                cache_key = f"{entity_id}_{curr}_{try_next_fy}"
-                fx = forex_cache.get(cache_key)
-            
-            if not fx:
-                try_prev_fy = financial_year - 1
-                cache_key = f"{entity_id}_{curr}_{try_prev_fy}"
-                fx = forex_cache.get(cache_key)
+                # Debug: Log why forex wasn't found (only log first few to avoid spam)
+                if updated_count < 3:
+                    print(f"⚠️ WARNING: No forex rates found for Entity {entity_id}, Currency {curr}, FY {financial_year}. Skipping calculation for this row.")
+                continue  # Skip this row - strict requirement: rates must be from same FY
         
-        # Fallback to legacy cache
-        if not fx:
+        # Fallback to legacy cache only if no entity_id or financial_year (backward compatibility)
+        if not fx and (not entity_id or not financial_year):
             fx = forex_cache.get(f"legacy_{curr}")
             if not fx:
                 fx = forex_cache.get(curr)
         
         if not fx:
-            # Debug: Log why forex wasn't found (only log first few to avoid spam)
+            # No rates available at all
             if updated_count < 3:
                 print(f"⚠️ No forex cache found for currency: {curr}, entity: {entity_id}, FY: {financial_year} (row mainCategory: {main_category})")
             continue
