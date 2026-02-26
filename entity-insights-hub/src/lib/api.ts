@@ -2,8 +2,8 @@
  * API Service for communicating with Flask backend
  */
 // 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://finance.vardaands.com/api';
-// const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+// const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://finance.vardaands.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Log API base URL for debugging
 console.log('[API Config] Base URL:', API_BASE_URL);
@@ -931,6 +931,186 @@ export const reportsApi = {
   },
 };
 
+/**
+ * Financial Year Master API calls
+ */
+export const financialYearMasterApi = {
+  /**
+   * List all financial years, optionally filtered by is_active
+   */
+  list: async (isActive?: boolean): Promise<ApiResponse<{ financial_years: Array<{
+    id: number;
+    financial_year: string;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+    created_by: number | null;
+  }> }>> => {
+    const params = new URLSearchParams();
+    if (isActive !== undefined) params.append('is_active', isActive.toString());
+    const queryString = params.toString();
+    const endpoint = queryString ? `/financial-year-master?${queryString}` : '/financial-year-master';
+    return apiCall<{ financial_years: Array<{
+      id: number;
+      financial_year: string;
+      start_date: string;
+      end_date: string;
+      is_active: boolean;
+      description: string | null;
+      created_at: string;
+      updated_at: string;
+      created_by: number | null;
+    }> }>(endpoint, { method: 'GET' });
+  },
+
+  /**
+   * Get a single financial year by ID
+   */
+  get: async (id: number): Promise<ApiResponse<{
+    id: number;
+    financial_year: string;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+    created_by: number | null;
+  }>> => {
+    return apiCall<{
+      id: number;
+      financial_year: string;
+      start_date: string;
+      end_date: string;
+      is_active: boolean;
+      description: string | null;
+      created_at: string;
+      updated_at: string;
+      created_by: number | null;
+    }>(`/financial-year-master/${id}`, { method: 'GET' });
+  },
+
+  /**
+   * Create a new financial year
+   */
+  create: async (payload: {
+    financial_year: string;
+    start_date: string;
+    end_date: string;
+    is_active?: boolean;
+    description?: string;
+  }): Promise<ApiResponse<{
+    id: number;
+    financial_year: string;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+    created_by: number | null;
+  }>> => {
+    return apiCall<{
+      id: number;
+      financial_year: string;
+      start_date: string;
+      end_date: string;
+      is_active: boolean;
+      description: string | null;
+      created_at: string;
+      updated_at: string;
+      created_by: number | null;
+    }>('/financial-year-master', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Update an existing financial year
+   */
+  update: async (id: number, payload: {
+    financial_year?: string;
+    start_date?: string;
+    end_date?: string;
+    is_active?: boolean;
+    description?: string;
+  }): Promise<ApiResponse<{
+    id: number;
+    financial_year: string;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+    description: string | null;
+    created_at: string;
+    updated_at: string;
+    created_by: number | null;
+  }>> => {
+    return apiCall<{
+      id: number;
+      financial_year: string;
+      start_date: string;
+      end_date: string;
+      is_active: boolean;
+      description: string | null;
+      created_at: string;
+      updated_at: string;
+      created_by: number | null;
+    }>(`/financial-year-master/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Delete (deactivate) a financial year
+   */
+  delete: async (id: number): Promise<ApiResponse> => {
+    return apiCall(`/financial-year-master/${id}`, { method: 'DELETE' });
+  },
+
+  /**
+   * Validate if a date falls within any active financial year range
+   */
+  validate: async (date: string): Promise<ApiResponse<{
+    valid: boolean;
+    financial_year?: string;
+    id?: number;
+    message: string;
+  }>> => {
+    return apiCall<{
+      valid: boolean;
+      financial_year?: string;
+      id?: number;
+      message: string;
+    }>(`/financial-year-master/validate?date=${encodeURIComponent(date)}`, {
+      method: 'GET',
+    });
+  },
+
+  /**
+   * Get the current active financial year based on today's date
+   */
+  getCurrent: async (): Promise<ApiResponse<{
+    financial_year: string;
+    id: number;
+    start_date: string;
+    end_date: string;
+  }>> => {
+    return apiCall<{
+      financial_year: string;
+      id: number;
+      start_date: string;
+      end_date: string;
+    }>('/financial-year-master/current', {
+      method: 'GET',
+    });
+  },
+};
+
 export default {
   auth: authApi,
   test: testApi,
@@ -941,5 +1121,6 @@ export default {
   forex: forexApi,
   dashboard: dashboardApi,
   reports: reportsApi,
+  financialYearMaster: financialYearMasterApi,
 };
 

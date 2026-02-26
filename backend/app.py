@@ -14,6 +14,7 @@ from routes.code_master import code_master_bp
 from routes.dashboard import dashboard_bp
 from routes.forex import forex_bp
 from routes.reports import reports_bp
+from routes.financial_year_master import financial_year_master_bp
 
 app = Flask(__name__)
 
@@ -91,6 +92,7 @@ app.register_blueprint(code_master_bp, url_prefix='')
 app.register_blueprint(forex_bp, url_prefix='')
 app.register_blueprint(dashboard_bp, url_prefix='')
 app.register_blueprint(reports_bp, url_prefix='')
+app.register_blueprint(financial_year_master_bp, url_prefix='')
 
 
 # ==================== UTILITY ROUTES ====================
