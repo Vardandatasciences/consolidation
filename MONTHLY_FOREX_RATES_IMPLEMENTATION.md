@@ -177,3 +177,4 @@ mysql -u your_user -p balance_sheet < backend/migrations/002_monthly_forex_rates
 
 
 
+

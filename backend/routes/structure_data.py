@@ -1312,8 +1312,6 @@ def get_consolidation_data():
         if request.method == 'OPTIONS':
             return jsonify({'status': 'ok'}), 200
         
-        print(f"📊 Consolidation endpoint called with entity_id: {request.args.get('entity_id')}")
-        
         # Get query parameters
         entity_id = request.args.get('entity_id', type=int)
         financial_year_param = request.args.get('financial_year', type=str)

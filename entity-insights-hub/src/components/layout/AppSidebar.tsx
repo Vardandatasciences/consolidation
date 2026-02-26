@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Upload, Database, BarChart3, Settings, Code, DollarSign, Layers } from "lucide-react";
+import { LayoutDashboard, Building2, Upload, Database, BarChart3, Settings, Code } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -18,8 +18,6 @@ const menuItems = [
   { title: "Upload Data", url: "/upload", icon: Upload },
   { title: "Structured Data", url: "/structured-data", icon: Database },
   { title: "Code Master", url: "/code-master", icon: Code },
-  { title: "Forex Rates", url: "/forex", icon: DollarSign },
-  { title: "Consolidation", url: "/consolidation", icon: Layers },
   { title: "Reports", url: "/reports", icon: BarChart3 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
